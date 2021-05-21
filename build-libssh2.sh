@@ -21,14 +21,14 @@
 ###########################################################################
 #  Change values here
 #
-VERSION="1.4.3"
+VERSION="1.9.0"
 #
 ###########################################################################
 #
 # Don't change anything here
 SDKVERSION=`xcrun -sdk iphoneos --show-sdk-version`                                                          
 CURRENTPATH=`pwd`
-ARCHS="i386 x86_64 armv7 armv7s arm64"
+ARCHS="x86_64"
 DEVELOPER=`xcode-select -print-path`
 ##########
 set -e
@@ -37,16 +37,6 @@ if [ ! -e libssh2-${VERSION}.tar.gz ]; then
     curl -O https://www.libssh2.org/download/libssh2-${VERSION}.tar.gz
 else
 	echo "Using libssh2-${VERSION}.tar.gz"
-fi
-
-echo "Checking file: libssh2-${VERSION}.tar.gz"
-md5=`md5 -q libssh2-${VERSION}.tar.gz`
-if [ $md5 != "071004c60c5d6f90354ad1b701013a0b" ]
-then
-	echo "File corrupt, please download again."
-	exit 1
-else
-	echo "Checksum verified."
 fi
 
 mkdir -p bin
@@ -75,38 +65,37 @@ do
 	export AS=${DEVELOPER}/Toolchains/XcodeDefault.xctoolchain/usr/bin/as
 	export NM=${DEVELOPER}/Toolchains/XcodeDefault.xctoolchain/usr/bin/nm
 	export RANLIB=${DEVELOPER}/Toolchains/XcodeDefault.xctoolchain/usr/bin/ranlib
-	export LDFLAGS="-arch ${ARCH} -pipe -no-cpp-precomp -isysroot ${SDKROOT} -L${CURRENTPATH}/bin/${PLATFORM}${SDKVERSION}-${ARCH}.sdk/lib -miphoneos-version-min=7.0"
-	export CFLAGS="-arch ${ARCH} -pipe -no-cpp-precomp -isysroot ${SDKROOT} -I${CURRENTPATH}/bin/${PLATFORM}${SDKVERSION}-${ARCH}.sdk/include -miphoneos-version-min=7.0"
-	export CPPFLAGS="-arch ${ARCH} -pipe -no-cpp-precomp -isysroot ${SDKROOT} -I${CURRENTPATH}/bin/${PLATFORM}${SDKVERSION}-${ARCH}.sdk/include -miphoneos-version-min=7.0"
+	export LDFLAGS="-arch ${ARCH} -fembed-bitcode -pipe -no-cpp-precomp -isysroot ${SDKROOT} -L${CURRENTPATH}/bin/${PLATFORM}${SDKVERSION}-${ARCH}.sdk/lib -miphoneos-version-min=10.0"
+	export CFLAGS="-arch ${ARCH} -fembed-bitcode -pipe -no-cpp-precomp -isysroot ${SDKROOT} -I${CURRENTPATH}/bin/${PLATFORM}${SDKVERSION}-${ARCH}.sdk/include -miphoneos-version-min=10.0"
+	export CPPFLAGS="-arch ${ARCH} -fembed-bitcode -pipe -no-cpp-precomp -isysroot ${SDKROOT} -I${CURRENTPATH}/bin/${PLATFORM}${SDKVERSION}-${ARCH}.sdk/include -miphoneos-version-min=10.0"
 
 	mkdir -p "${CURRENTPATH}/bin/${PLATFORM}${SDKVERSION}-${ARCH}.sdk"
 
 	LOG="${CURRENTPATH}/bin/${PLATFORM}${SDKVERSION}-${ARCH}.sdk/build-libssh2-${VERSION}.log"
 	echo ${CURRENTPATH}/bin/${PLATFORM}${SDKVERSION}-${ARCH}.sdk
-	
+	echo "Please stand by..."
 		
 	HOST="${ARCH}"
 	if [ "${ARCH}" == "arm64" ];
 	then
 		HOST="aarch64"
+	elif [ "${ARCH}" == "arm64e" ];
+	then
+		HOST="aarch64"
 	fi
 	
-	if [ "$1" == "openssl" ];
-	then
-		./configure --host=${HOST}-apple-darwin --prefix="${CURRENTPATH}/bin/${PLATFORM}${SDKVERSION}-${ARCH}.sdk" --with-openssl --with-libssl-prefix=${CURRENTPATH}/bin/${PLATFORM}${SDKVERSION}-${ARCH}.sdk --disable-shared --enable-static  >> "${LOG}" 2>&1
-	else
-		./configure --host=${HOST}-apple-darwin --prefix="${CURRENTPATH}/bin/${PLATFORM}${SDKVERSION}-${ARCH}.sdk" --with-libgcrypt --with-libgcrypt-prefix=${CURRENTPATH}/bin/${PLATFORM}${SDKVERSION}-${ARCH}.sdk --disable-shared --enable-static  >> "${LOG}" 2>&1
-	fi
+  
+	./configure --host=${HOST}-apple-darwin --prefix="${CURRENTPATH}/bin/${PLATFORM}${SDKVERSION}-${ARCH}.sdk" --with-libgcrypt --with-libgcrypt-prefix=${CURRENTPATH}/bin/${PLATFORM}${SDKVERSION}-${ARCH}.sdk --disable-shared --enable-static   
+	 
 	
 	make >> "${LOG}" 2>&1
 	make install >> "${LOG}" 2>&1
-	cd ${CURRENTPATH}
-	rm -rf src/libssh2-${VERSION}
-	
+	cd ${CURRENTPATH} 
+	rm -rf src/libssh2-${VERSION} 
 done
 
 echo "Build library..."
-lipo -create ${CURRENTPATH}/bin/iPhoneSimulator${SDKVERSION}-i386.sdk/lib/libssh2.a ${CURRENTPATH}/bin/iPhoneSimulator${SDKVERSION}-x86_64.sdk/lib/libssh2.a ${CURRENTPATH}/bin/iPhoneOS${SDKVERSION}-armv7.sdk/lib/libssh2.a ${CURRENTPATH}/bin/iPhoneOS${SDKVERSION}-armv7s.sdk/lib/libssh2.a ${CURRENTPATH}/bin/iPhoneOS${SDKVERSION}-arm64.sdk/lib/libssh2.a -output ${CURRENTPATH}/lib/libssh2.a
+lipo -create ${CURRENTPATH}/bin/iPhoneSimulator${SDKVERSION}-x86_64.sdk/lib/libssh2.a ${CURRENTPATH}/bin/iPhoneOS${SDKVERSION}-arm64e.sdk/lib/libssh2.a ${CURRENTPATH}/bin/iPhoneOS${SDKVERSION}-arm64.sdk/lib/libssh2.a -output ${CURRENTPATH}/lib/libssh2.a
 mkdir -p ${CURRENTPATH}/include/libssh2
 cp -R ${CURRENTPATH}/bin/iPhoneSimulator${SDKVERSION}-i386.sdk/include/libssh2* ${CURRENTPATH}/include/libssh2/
 echo "Building done."
